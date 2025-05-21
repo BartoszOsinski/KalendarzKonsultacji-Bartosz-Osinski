@@ -1,0 +1,389 @@
+{% extends "layouts/index.html" %}
+
+{% block title %}Kalendarz{% endblock %}
+
+{% block head %}
+<!-- Jeśli używasz Tailwind CSS, upewnij się, że jest załadowany tutaj -->
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<!-- Dodanie SweetAlert2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+<!-- Przeniesienie stylów do body -->
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    .h-screen{
+        height:92vh;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    /* Upewnij się, że kalendarz zajmuje pełną wysokość i szerokość */
+    #calendar {
+        flex: 1 1 auto;
+        width: 100% !important;
+        min-width: 800px;
+        max-width: 100%;
+    }
+
+    /* Zapobieganie zmianie szerokości kalendarza */
+    .fc {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .fc-view-harness {
+        width: 100% !important;
+    }
+
+    /* Styl dla wyłączonych terminów */
+    .disabled-event {
+        pointer-events: none; /* Wyłącza możliwość kliknięcia */
+        opacity: 0.5; /* Ułatwia wizualne rozróżnienie */
+        cursor: default; /* Zmienia kursor na domyślny */
+    }
+
+    /* Style dla powiadomień */
+    .notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        z-index: 1500;
+        transition: all 0.3s;
+        animation: slideInRight 0.3s forwards;
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .notification.success {
+        background-color: #4CAF50;
+    }
+
+    .notification.error {
+        background-color: #f44336;
+    }
+
+    /* Stylizacja przycisków w SweetAlert2, opcjonalnie */
+    .swal2-popup {
+        font-size: 1.6rem;
+    }
+
+    /* Stylizacja selectora instruktorów */
+    .instructor-selector {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .instructor-selector select {
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        border: 1px solid #ced4da;
+        min-width: 250px;
+    }
+</style>
+
+<!-- Linki do FullCalendar CSS i JS -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.css' rel='stylesheet'/>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/locales/pl.js'></script>
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<div class="h-screen w-full flex flex-col">
+    <header class="bg-gray-800 text-white p-4">
+        <h2 class="text-2xl font-bold">Kalendarz</h2>
+    </header>
+
+    <!-- Dodanie selektora instruktorów -->
+    <div class="instructor-selector flex items-center justify-between">
+        <div>
+            <label for="instructor-select" class="mr-2 font-medium">Wybierz instruktora:</label>
+            <select id="instructor-select" class="form-select">
+                <option value="">Ładowanie instruktorów...</option>
+            </select>
+        </div>
+        <div id="instructor-info" class="text-gray-700">
+            <!-- Tutaj będzie wyświetlane imię i nazwisko wybranego instruktora -->
+        </div>
+    </div>
+
+    <main class="flex-1 overflow-hidden w-full">
+        <div id='calendar' class="h-full w-full"></div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var instructorSelect = document.getElementById('instructor-select');
+        var instructorInfo = document.getElementById('instructor-info');
+        var selectedInstructorId = null;
+
+        // Funkcja do pokazywania powiadomień
+        function showToast(message, type) {
+            var notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            notification.innerHTML = message;
+            document.body.appendChild(notification);
+
+            setTimeout(function() {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+
+        // Funkcja do ładowania instruktorów
+        function loadInstructors() {
+            fetch('/api/instructors')
+                .then(response => response.json())
+                .then(data => {
+                    instructorSelect.innerHTML = '';
+                    data.forEach(instructor => {
+                        const option = document.createElement('option');
+                        option.value = instructor.id;
+                        option.textContent = `${instructor.first_name} ${instructor.last_name}`;
+                        instructorSelect.appendChild(option);
+                    });
+
+                    // Jeśli są instruktorzy, wybieramy pierwszego domyślnie
+                    if (data.length > 0) {
+                        instructorSelect.value = data[0].id;
+                        selectedInstructorId = data[0].id;
+                        instructorInfo.textContent = `Wybrany instruktor: ${data[0].first_name} ${data[0].last_name}`;
+                        initializeCalendar(selectedInstructorId);
+                    } else {
+                        instructorInfo.textContent = 'Brak dostępnych instruktorów';
+                        showToast('Brak dostępnych instruktorów', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Błąd podczas pobierania listy instruktorów:', error);
+                    showToast('Błąd podczas pobierania listy instruktorów', 'error');
+                });
+        }
+
+        // Obsługa zmiany wybranego instruktora
+        instructorSelect.addEventListener('change', function() {
+            selectedInstructorId = this.value;
+            const selectedOption = this.options[this.selectedIndex];
+            instructorInfo.textContent = selectedOption.text ? `Wybrany instruktor: ${selectedOption.text}` : '';
+
+            if (window.calendar) {
+                // Aktualizacja źródła wydarzeń
+                window.calendar.setOption('events', `/calendar/get_appointments?instructor_id=${selectedInstructorId}`);
+                window.calendar.refetchEvents();
+            }
+        });
+
+        // Funkcja inicjalizująca kalendarz
+     // Funkcja inicjalizująca kalendarz z blokadą interakcji w widoku miesiąca
+function initializeCalendar(instructorId) {
+    window.calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        slotDuration: '00:30:00',
+        slotMinTime: '08:00:00',
+        slotMaxTime: '20:00:00',
+        locale: 'pl',
+        timeZone: 'Europe/Warsaw',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: `/calendar/get_appointments?instructor_id=${instructorId}`,
+        eventDidMount: function(info) {
+            var eventStart = info.event.start;
+            var now = new Date();
+            var thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60000);
+
+            // Dodaj klasę dla wydarzeń w przeszłości
+            if (eventStart < thirtyMinutesFromNow) {
+                info.el.classList.add('disabled-event');
+            }
+
+            // Dodaj klasę dla wszystkich wydarzeń w widoku miesiąca
+        },
+        eventClick: function(info) {
+            // Sprawdź czy jesteśmy w widoku miesiąca
+            if (calendar.view.type === 'dayGridMonth') {
+                return; // Zatrzymaj interakcję w widoku miesiąca
+            }
+
+            var eventStart = info.event.start;
+            var now = new Date();
+            var thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60000);
+
+            if (eventStart < thirtyMinutesFromNow) {
+                showToast('Nie można dodać terminu w tym czasie.', 'error');
+                return; // Zatrzymuje dalsze przetwarzanie kliknięcia
+            }
+            if (info.event.backgroundColor === '#1B8359') {
+                Swal.fire({
+                    title: 'Dodaj Termin',
+                    input: 'text',
+                    inputLabel: 'Wprowadź temat wizyty:',
+                    inputPlaceholder: 'Temat...',
+                    showCancelButton: true,
+                    confirmButtonText: 'Dodaj',
+                    cancelButtonText: 'Anuluj',
+                    customClass: {
+                        confirmButton: 'swal2-confirm-custom',
+                        cancelButton: 'swal2-cancel-custom'
+                    },
+                    inputValidator: (value) => {
+                        if (!value) {
+                            return 'Musisz wprowadzić temat wizyty!';
+                        }
+                        return null;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        var topic = result.value;
+                        fetch('/calendar/book/' + info.event.id, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                topic: topic,
+                                instructor_id: selectedInstructorId
+                            }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                calendar.refetchEvents(); // Odświeża kalendarz po udanej rezerwacji
+                                showToast('Termin został pomyślnie zarezerwowany.', 'success');
+                            } else {
+                                showToast('Błąd podczas rezerwacji terminu: ' + (data.message || 'Nieznany błąd.'), 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Błąd:', error);
+                            showToast('Wystąpił błąd podczas rezerwacji terminu.', 'error');
+                        });
+                    }
+                });
+            } else if (info.event.backgroundColor == '#9C27B0' || info.event.backgroundColor == '#996C00') {
+                Swal.fire({
+                    title: 'Anuluj Termin',
+                    text: 'Temat wizyty: '+ info.event.extendedProps.titleMessage,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Tak, anuluj',
+                    cancelButtonText: 'Nie, pozostaw',
+                    customClass: {
+                        confirmButton: 'swal2-confirm-custom',
+                        cancelButton: 'swal2-cancel-custom'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('/calendar/cancel/' + info.event.id, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                calendar.refetchEvents(); // Odświeża kalendarz po udanym anulowaniu
+                                showToast('Termin został pomyślnie anulowany.', 'success');
+                            } else {
+                                showToast('Błąd podczas anulowania terminu: ' + (data.message || 'Nieznany błąd.'), 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Błąd:', error);
+                            showToast('Wystąpił błąd podczas anulowania terminu.', 'error');
+                        });
+                    }
+                });
+            }
+        },
+        // Dodaj obsługę przełączania widoków
+        datesSet: function(info) {
+            // Wykonaj kod po zmianie widoku lub dat
+            if (calendar.view.type === 'dayGridMonth') {
+                // Znajdź wszystkie wydarzenia w widoku miesiąca i zastosuj dla nich styl
+
+                // Pokaż informację o widoku miesiąca jeśli jeszcze nie istnieje
+                if (!document.getElementById('monthViewInfo')) {
+                    const calendarHeader = document.querySelector('.fc-header-toolbar');
+                    if (calendarHeader) {
+                        const infoElement = document.createElement('div');
+                        infoElement.id = 'monthViewInfo';
+                        infoElement.className = 'text-center text-gray-600 mt-2';
+                        infoElement.innerHTML = 'Aby dodać lub anulować termin, przejdź do widoku tygodnia lub dnia';
+                        calendarHeader.parentNode.insertBefore(infoElement, calendarHeader.nextSibling);
+                    }
+                }
+            } else {
+                // Usuń informację o widoku miesiąca jeśli istnieje
+                const monthViewInfo = document.getElementById('monthViewInfo');
+                if (monthViewInfo) {
+                    monthViewInfo.remove();
+                }
+            }
+        }
+    });
+    calendar.render();
+}
+
+        // Ładujemy instruktorów przy załadowaniu strony
+        loadInstructors();
+
+        // Ustawienie funkcji showToast jako globalnej
+        window.showToast = showToast;
+    });
+</script>
+{% endblock %}

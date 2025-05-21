@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <title>{% block title %}{% endblock %}</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description"
+          content="Przykładowa aplikacja Flask gotowa do produkcji, korzystająca z Docker i Docker Compose.">
+
+    <link rel="stylesheet" href="{{ static_url_for('static', filename='css/app.css') }}">
+
+    <!-- Dodanie stylów Toastify -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+    <script defer src="{{ static_url_for('static', filename='js/app.js') }}"></script>
+
+    <!-- Dodanie skryptu Toastify -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    {# Generated with: https://realfavicongenerator.net/ #}
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#61b9d2">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+</head>
+
+<body class="flex flex-col h-screen justify-between">
+<nav class="bg-gray-800 p-4">
+    <div class="container mx-auto flex justify-between items-center">
+        <a href="{{ url_for('page.home') }}" class="text-white font-bold">Aplikacja - Kalendarz</a>
+        {% if current_user.is_authenticated %}
+        <div class="ml-4 px-3 py-1 rounded-full text-sm font-semibold text-white
+                    {% if current_user.is_admin %}bg-red-600
+                    {% elif current_user.is_instructor %}bg-blue-600
+                    {% else %}bg-green-600{% endif %}">
+            {% if current_user.is_admin %}Admin
+            {% elif current_user.is_instructor %}Instruktor
+            {% else %}Użytkownik{% endif %}
+        </div>
+        {% endif %}
+        <div class="flex items-center">
+            {% if current_user.is_authenticated %}
+            {% if current_user.is_instructor %}
+            <a href="{{ url_for('instructor.calendar') }}" class="text-white mr-4">Kalendarz Instruktora</a>
+            {% elif not current_user.is_admin %}
+            <a href="{{ url_for('calendar.view') }}" class="text-white mr-4">Kalendarz</a>
+            {% endif %}
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('admin.dashboard') }}" class="text-white mr-4">Panel Administratora</a>
+            {% endif %}
+            <div class="relative" id="notifications-container">
+                <button id="notifications-button" class="text-white mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <span id="notifications-count"
+                          class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">0</span>
+                </button>
+                <div id="notifications-dropdown"
+                     class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-20"
+                     style="display:none;">
+                    <div class="py-2">
+                        <!-- Notyfikacje będą tutaj wstawiane dynamicznie -->
+                    </div>
+                </div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="text-white">Wyloguj</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="text-white mr-4">Logowanie</a>
+            <a href="{{ url_for('auth.register') }}" class="text-white">Rejestracja</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-screen-lg mx-auto mb-auto">
+    {% block body %}{% endblock %}
+</main>
+
+<div id="appointmentModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span id="closeModal" class="close">&times;</span>
+        <h2 id="modalTitle" class="text-xl font-bold mb-4"></h2>
+        <p id="modalTime"></p>
+        <p id="modalStudent"></p>
+        <div id="modalActions" class="mt-4">
+            <button id="acceptBtn" class="bg-[#1B8359] hover:bg-[#3a8b6f] text-white font-bold py-2 px-4 rounded mr-2">
+                Akceptuj
+            </button>
+            <button id="rejectBtn" class="bg-[#D32F2F] hover:bg-[#d15555] text-white font-bold py-2 px-4 rounded">
+                Odrzuć
+            </button>
+            <button id="cancelBtn" class="bg-[#D32F2F] hover:bg-[#3a8b6f] text-white font-bold py-2 px-4 rounded mr-2"
+                    style="display:none">
+                Anuluj
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Funkcja pomocnicza do wyświetlania powiadomień za pomocą Toastify
+    window.showToast=function(message, type = "info") {
+      let bgColor;
+
+      switch(type) {
+        case "success":
+          bgColor = "#4CAF50"; // Zielony
+          break;
+        case "error":
+          bgColor = "#F44336"; // Czerwony
+          break;
+        case "warning":
+          bgColor = "#FF9800"; // Pomarańczowy
+          break;
+        default:
+          bgColor = "#2196F3"; // Niebieski
+      }
+
+      Toastify({
+        text: message,
+        duration: 3000, // 3 sekundy
+        close: true,
+        gravity: "top", // góra lub dół
+        position: "right", // lewo, środek, prawo
+        backgroundColor: bgColor,
+        stopOnFocus: true, // Powstrzymuje zamknięcie podczas najechania myszką
+      }).showToast();
+    }
+
+window.showAppointmentDetails = function(event) {
+    window.modal = document.getElementById('appointmentModal');
+    document.getElementById("modalTitle").innerText = event.extendedProps.titleMessage;
+
+    // Sprawdzenie, czy wydarzenie trwa dokładnie 24 godziny
+    const isAllDay = (event.end - event.start) === 24 * 60 * 60 * 1000; // 24 godziny w milisekundach
+
+    if (isAllDay) {
+        const formattedDate = event.start.toLocaleDateString('pl-PL', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        document.getElementById("modalTime").innerText = `Czas: cały dzień - ${formattedDate}`;
+    } else {
+        const startTime = event.start.toLocaleString('pl-PL', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const endTime = event.end.toLocaleString('pl-PL', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        document.getElementById("modalTime").innerText = `Czas: ${startTime} - ${endTime}`;
+    }
+
+    if (event.extendedProps.student) {
+        document.getElementById("modalStudent").innerText = `Student: ${event.extendedProps.student}`;
+        document.getElementById("modalActions").style.display = "block";
+    } else {
+        document.getElementById("modalStudent").innerText = "";
+        document.getElementById("modalActions").style.display = "none";
+    }
+
+    // Sprawdzenie statusu wydarzenia
+    const isConfirmed = event.extendedProps.status === 'confirmed';
+
+    // Pobranie przycisków
+    const acceptBtn = document.getElementById("acceptBtn");
+    const rejectBtn = document.getElementById("rejectBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    // Ukrywanie lub pokazywanie przycisków
+    acceptBtn.style.display = isConfirmed ? "none" : "inline-block";
+    rejectBtn.style.display = isConfirmed ? "none" : "inline-block";
+    cancelBtn.style.display = isConfirmed ? "inline-block": "none";
+    // Przypisanie akcji do przycisków, jeśli są widoczne
+    if (!isConfirmed) {
+        acceptBtn.onclick = function() {
+            handleAppointmentAction(event.id, 'confirm');
+        };
+
+        rejectBtn.onclick = function() {
+            handleAppointmentAction(event.id, 'reject');
+        };
+    }
+    cancelBtn.onclick = function() {
+            handleAppointmentAction(event.id, 'cancel');
+        };
+    modal.style.display = "block";
+};
+
+
+    window.handleAppointmentAction = function(appointmentId, action) {
+      fetch(`/instructor/${action}_appointment/${appointmentId}`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.status === 'success') {
+              calendar.refetchEvents();
+              modal.style.display = "none";
+              showToast(`Spotkanie zostało ${action === 'confirm' ? 'zaakceptowane' : action === 'cancel' ? 'anulowane' : 'odrzucone'}.`, "success");
+
+
+              // Znalezienie powiązanej notyfikacji
+              const notificationElement = document.querySelector(`[data-notification-type="appointment"][data-related-id="${appointmentId}"]`);
+              if (notificationElement) {
+                  const notificationId = notificationElement.dataset.notificationId;
+
+                  // Oznaczenie notyfikacji jako przeczytanej
+                  fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' })
+                      .then(response => response.json())
+                      .then(readData => {
+                          if (readData.status === 'success') {
+                              // Przeładowanie notyfikacji
+                              fetchNotifications();
+                          }
+                      })
+                      .catch(error => {
+                          console.error('Error marking notification as read:', error);
+                      });
+              }
+          } else {
+              showToast(data.message, "error");
+          }
+      })
+      .catch(error => {
+          console.error('Error:', error);
+          showToast(data.message, "error");
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const notificationsButton = document.getElementById('notifications-button');
+      window.notificationsCount = document.getElementById('notifications-count');
+      const notificationsDropdown = document.getElementById('notifications-dropdown');
+      const closeModalButton = document.getElementById('closeModal');
+
+      window.fetchNotifications = function() {
+        fetch('/api/notifications')
+          .then(response => response.json())
+          .then(data => {
+            notificationsCount.textContent = data.unread_count;
+            updateNotificationsDropdown(data.notifications);
+          });
+      }
+
+      function updateNotificationsDropdown(notifications) {
+        const dropdownContent = notifications.map(notification => `
+          <div class="px-4 py-2 hover:bg-gray-100 cursor-pointer" data-notification-id="${notification.id}" data-notification-type="${notification.type}" data-related-id="${notification.related_id}">
+            <p class="text-sm ${notification.is_read ? 'text-gray-600' : 'font-bold'}">${notification.message}</p>
+            <p class="text-xs text-gray-500">${new Date(notification.timestamp).toLocaleString()}</p>
+            <div class="mt-2">
+              ${!notification.is_read ?
+              `<button class="read-notification bg-[#1B8359] hover:bg-[#3a8b6f] text-white font-bold py-1 px-2 rounded text-xs mr-2">
+                Przeczytałem
+              </button>` : ''
+                    }
+               <button class="delete-notification bg-[#D32F2F] hover:bg-[#d15555] text-white font-bold py-1 px-2 rounded text-xs">
+                  Usuń
+               </button>
+            </div>
+          </div>
+        `).join('');
+
+        notificationsDropdown.innerHTML = dropdownContent;
+
+        // Dodanie nasłuchiwania na przyciski "Przeczytałem" i "Usuń"
+        document.querySelectorAll('.read-notification').forEach(button => {
+          button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const notificationId = e.target.closest('[data-notification-id]').dataset.notificationId;
+            markNotificationAsRead(notificationId);
+          });
+        });
+
+        document.querySelectorAll('.delete-notification').forEach(button => {
+          button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const notificationId = e.target.closest('[data-notification-id]').dataset.notificationId;
+            deleteNotification(notificationId);
+          });
+        });
+
+        // Dodanie nasłuchiwania na kliknięcie notyfikacji typu "appointment"
+        document.querySelectorAll('[data-notification-type="appointment"]').forEach(notificationElement => {
+          notificationElement.addEventListener('click', function(e) {
+            const notificationId = this.dataset.notificationId;
+
+            fetch(`/api/notifications/${notificationId}/details`)
+              .then(response => response.json())
+              .then(data => {
+                if (data.status === 'success') {
+                  // Przetworzenie danych spotkania do oczekiwanego formatu
+                  const event = {
+                    id: data.appointment.id,
+                    start: new Date(data.appointment.start),
+                    end: new Date(data.appointment.end),
+                    title: data.appointment.title,
+                    extendedProps: {
+                      student: data.appointment.extendedProps.student,
+                      status: data.appointment.extendedProps.status,
+                      can_accept: data.appointment.extendedProps.can_accept,
+                      can_decline: data.appointment.extendedProps.can_decline
+                    }
+                  };
+                  showAppointmentDetails(event);
+                } else {
+                  console.error('Failed to fetch appointment details:', data.message);
+                }
+              })
+              .catch(error => {
+                console.error('Error fetching appointment details:', error);
+              });
+          });
+        });
+      }
+
+      function confirmAppointment(appointmentId) {
+        fetch(`/instructor/confirm_appointment/${appointmentId}`, { method: 'POST' })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              showToast('Wizyta została potwierdzona.', "success");
+              document.getElementById('appointmentModal').style.display = 'none';
+              fetchNotifications();
+            } else {
+              showToast('Nie udało się potwierdzić wizyty.', "error");
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast('Wystąpił błąd podczas potwierdzania wizyty.', "error");
+          });
+      }
+
+      function rejectAppointment(appointmentId) {
+        fetch(`/instructor/reject_appointment/${appointmentId}`, { method: 'POST' })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              showToast('Wizyta została odrzucona.', "success");
+              document.getElementById('appointmentModal').style.display = 'none';
+              fetchNotifications();
+            } else {
+              showToast('Nie udało się odrzucić wizyty.', "error");
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast('Wystąpił błąd podczas odrzucania wizyty.', "error");
+          });
+      }
+
+      function markNotificationAsRead(notificationId) {
+        fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              showToast('Notyfikacja została oznaczona jako przeczytana.', "success");
+              fetchNotifications();
+            } else {
+              showToast('Nie udało się oznaczyć notyfikacji jako przeczytanej.', "error");
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast('Wystąpił błąd podczas oznaczania notyfikacji.', "error");
+          });
+      }
+
+      function deleteNotification(notificationId) {
+        fetch(`/api/notifications/${notificationId}`, { method: 'DELETE' })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              showToast('Notyfikacja została usunięta.', "success");
+              fetchNotifications();
+            } else {
+              showToast('Nie udało się usunąć notyfikacji.', "error");
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast('Wystąpił błąd podczas usuwania notyfikacji.', "error");
+          });
+      }
+
+      notificationsButton.addEventListener('click', function() {
+        notificationsDropdown.style.display = notificationsDropdown.style.display === 'none' ? 'block' : 'none';
+      });
+
+      closeModalButton.addEventListener('click', function() {
+        document.getElementById('appointmentModal').style.display = 'none';
+      });
+
+      // Zamknięcie modalu przy kliknięciu poza nim
+      window.addEventListener('click', function(event) {
+        const modal = document.getElementById('appointmentModal');
+        if (event.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+
+      // Początkowe pobranie notyfikacji
+      fetchNotifications();
+
+      // Pobieranie notyfikacji co 40 sekund
+      setInterval(fetchNotifications, 40000);
+    });
+</script>
+</body>
+</html>

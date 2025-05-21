@@ -1,0 +1,18 @@
+/*
+ * Your custom CSS goes here but before adding a lot of CSS check this out:
+ *   https://tailwindcss.com/docs/extracting-components
+*/
+
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+.swal2-confirm-custom {
+    background-color: #1B8359 !important;
+    border-color: #1B8359 !important;
+}
+
+.swal2-cancel-custom {
+    background-color: #D32F2F !important;
+    border-color: #D32F2F !important;
+}
