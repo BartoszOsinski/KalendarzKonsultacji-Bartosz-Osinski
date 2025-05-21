@@ -316,7 +316,7 @@ function initializeCalendar(instructorId) {
             } else if (info.event.backgroundColor == '#9C27B0' || info.event.backgroundColor == '#996C00') {
                 Swal.fire({
                     title: 'Anuluj Termin',
-                    text: 'Temat wizyty: '+ info.event.extendedProps.titleMessage,
+                    text: ''+ info.event.extendedProps.titleMessage,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Tak, anuluj',
