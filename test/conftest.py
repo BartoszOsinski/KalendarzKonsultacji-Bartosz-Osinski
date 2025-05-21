@@ -1,29 +1,18 @@
 import pytest
-
 from config import settings
 from calendarproject.app import create_app
 from calendarproject.extensions import db as _db
-
 
 @pytest.fixture(scope="session")
 def app():
     """
     Setup our flask test app, this only gets executed once.
-
-    :return: Flask app
     """
-    db_uri = settings.SQLALCHEMY_DATABASE_URI
-
-    if "?" in db_uri:
-        db_uri = db_uri.replace("?", "_test?")
-    else:
-        db_uri = f"{db_uri}_test"
-
     params = {
         "DEBUG": False,
         "TESTING": True,
         "WTF_CSRF_ENABLED": False,
-        "SQLALCHEMY_DATABASE_URI": db_uri,
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",  # In-memory SQLite
     }
 
     _app = create_app(settings_override=params)
@@ -32,50 +21,33 @@ def app():
     ctx = _app.app_context()
     ctx.push()
 
+    # Create all tables
+    _db.create_all()
+
     yield _app
 
+    # Clean up
+    _db.session.remove()
+    _db.drop_all()
     ctx.pop()
-
 
 @pytest.fixture(scope="function")
 def client(app):
     """
     Setup an app client, this gets executed for each test function.
-
-    :param app: Pytest fixture
-    :return: Flask app client
     """
-    yield app.test_client()
-
-
-@pytest.fixture(scope="session")
-def db(app):
-    """
-    Setup our database, this only gets executed once per session.
-
-    :param app: Pytest fixture
-    :return: SQLAlchemy database session
-    """
-    _db.drop_all()
-    _db.create_all()
-
-    return _db
-
+    # Use yield instead of with context manager to avoid request context errors
+    client = app.test_client()
+    yield client
 
 @pytest.fixture(scope="function")
-def session(db):
+def db(app):
     """
-    Allow very fast tests by using rollbacks and nested sessions. This does
-    require that your database supports SQL savepoints, and Postgres does.
-
-    Read more about this at:
-    http://stackoverflow.com/a/26624146
-
-    :param db: Pytest fixture
-    :return: None
+    Reset database between tests
     """
-    db.session.begin_nested()
+    # Clear all tables
+    for table in reversed(_db.metadata.sorted_tables):
+        _db.session.execute(table.delete())
 
-    yield db.session
-
-    db.session.rollback()
+    _db.session.commit()
+    return _db

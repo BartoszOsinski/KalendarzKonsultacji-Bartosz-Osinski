@@ -6,9 +6,9 @@ load_dotenv(".env.local", override=True)
 SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = bool(strtobool(os.getenv("FLASK_DEBUG", "false")))
 
+print(os.getenv("SERVER_NAME"),"xd")
 SERVER_NAME = os.getenv(
-    "SERVER_NAME", "0.0.0.0:{0}".format(os.getenv("PORT", "80"))
-)
+    "SERVER_NAME", "138.199.214.3:80")
 
 # Admin configuration
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
@@ -23,7 +23,6 @@ pg_pass = os.getenv("POSTGRES_PASSWORD")
 pg_host = os.getenv("POSTGRES_HOST", "postgres")
 pg_port = os.getenv("POSTGRES_PORT", "5432")
 pg_db = os.getenv("POSTGRES_DB", pg_user)
-print(pg_user,pg_pass,"xd")
 db = f"postgresql+psycopg://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
 SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", db)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
