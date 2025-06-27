@@ -8,6 +8,7 @@
 </div>
 
 {% if not current_user.is_authenticated %}
+  <!-- Blok dla niezalogowanych -->
   <p class="text-center text-lg mt-12">
     Nie masz konta?
     <strong>
@@ -22,12 +23,12 @@
     </strong>
   </p>
 {% else %}
+  <!-- Blok dla zalogowanych -->
   <div class="text-center mt-12">
-
-    {% if current_user.is_instructor %}
-      <a class="text-blue-600 underline" href="{{ url_for('instructor.dashboard') }}">Przejdź do panelu instruktora</a>
     {% if current_user.is_admin %}
-     <a class="text-blue-600 underline" href="{{ url_for('admin.dashboard') }}">Przejdź do panelu administratora</a>
+      <a class="text-blue-600 underline" href="{{ url_for('admin.dashboard') }}">Przejdź do panelu administratora</a>
+    {% elif current_user.is_instructor %}
+      <a class="text-blue-600 underline" href="{{ url_for('instructor.dashboard') }}">Przejdź do panelu instruktora</a>
     {% else %}
       <a class="text-blue-600 underline" href="{{ url_for('calendar.dashboard') }}">Przejdź do swojego kalendarza</a>
     {% endif %}
