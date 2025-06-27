@@ -1,24 +1,22 @@
 {% extends "layouts/index.html" %}
 
-{% block title %}Docker + Flask{% endblock %}
+{% block title %}Kalendarz Konsultacji{% endblock %}
 
 {% block body %}
-  <div class="flex justify-center pt-24 pb-12 px-2 sm:px-0">
-    <img src="{{ static_url_for('static', filename='images/flask.png') }}"
-         width="480" height="188" alt="Flask logo" />
+  <div class="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-center px-4">
+    <h1 class="text-4xl sm:text-6xl font-bold text-gray-800 mb-8">
+      Kalendarz Konsultacji
+    </h1>
+
+    <div class="flex space-x-4">
+      <a href="{{ url_for('auth.login') }}"
+         class="px-6 py-3 bg-blue-600 text-white text-lg rounded-lg shadow hover:bg-blue-700 transition">
+        Zaloguj się
+      </a>
+      <a href="{{ url_for('auth.register') }}"
+         class="px-6 py-3 bg-green-600 text-white text-lg rounded-lg shadow hover:bg-green-700 transition">
+        Zarejestruj się
+      </a>
+    </div>
   </div>
-
-  <p class="text-center text-lg">
-   🚀 Learn to Build a SAAS App with Flask at:
-    <strong>
-      <a class="border-b border-gray-900 mb-1" href="https://buildasaasappwithflask.com?ref=docker-flask-example">https://buildasaasappwithflask.com</a>
-    </strong>
-  </p>
-
-  <p class="text-center text-lg mt-6">
-   🐳 Learn the Docker fundamentals at:
-    <strong>
-      <a class="border-b border-gray-900 mb-1" href="https://diveintodocker.com?ref=docker-flask-example">https://diveintodocker.com</a>
-    </strong>
-  </p>
 {% endblock %}
