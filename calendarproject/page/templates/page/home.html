@@ -1,28 +1,28 @@
-{% extends "layouts/index.html" %}
-
-{% block title %}Kalendarz Konsultacji{% endblock %}
-
 {% block body %}
-  <div class="flex flex-col items-center justify-center min-h-screen bg-white px-4">
-    <h1 class="text-6xl sm:text-7xl font-extrabold text-black text-center leading-tight">
-      Kalendarz<br>Konsultacji
-    </h1>
+  <div class="flex items-center justify-center min-h-screen bg-white px-4">
+    <div class="text-center">
+      <h1 class="text-[80px] sm:text-[100px] font-extrabold text-black leading-none">
+        Kalendarz
+      </h1>
+      <h1 class="text-[80px] sm:text-[100px] font-extrabold text-black leading-none">
+        Konsultacji
+      </h1>
 
-    <div class="mt-12 text-center">
-      <p class="text-lg">
-        Nie masz konta?
-        <strong>
-          <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.register') }}">Zarejestruj się</a>
-        </strong>
-      </p>
+      <div class="mt-12">
+        <p class="text-xl">
+          Nie masz konta?
+          <strong>
+            <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.register') }}">Zarejestruj się</a>
+          </strong>
+        </p>
 
-      <p class="text-lg mt-6">
-        Posiadasz już konto?
-        <strong>
-          <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.login') }}">Zaloguj się</a>
-        </strong>
-      </p>
+        <p class="text-xl mt-6">
+          Posiadasz już konto?
+          <strong>
+            <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.login') }}">Zaloguj się</a>
+          </strong>
+        </p>
+      </div>
     </div>
   </div>
 {% endblock %}
-
