@@ -31,7 +31,7 @@
 <body class="flex flex-col h-screen justify-between">
 <nav class="bg-gray-800 p-4">
     <div class="container mx-auto flex justify-between items-center">
-        <a href="{{ url_for('page.home') }}" class="text-white font-bold">Aplikacja - Kalendarz</a>
+        <a href="{{ url_for('page.home') }}" class="text-white font-bold">Kalendarz Konsultacji</a>
         {% if current_user.is_authenticated %}
         <div class="ml-4 px-3 py-1 rounded-full text-sm font-semibold text-white
                     {% if current_user.is_admin %}bg-red-600
