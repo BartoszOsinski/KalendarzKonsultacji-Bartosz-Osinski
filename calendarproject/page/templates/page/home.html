@@ -3,25 +3,21 @@
 {% block title %}Kalendarz Konsultacji{% endblock %}
 
 {% block body %}
-  <div class="flex justify-center pt-24 pb-12 px-2 sm:px-0">
-    <img src="{{ static_url_for('static', filename='images/flask.png') }}" alt="Flask" />
+
+<div class="flex justify-center pt-24 pb-12 px-2 sm:px-0">
+  <img src="{{ static_url_for('static', filename='images/flask.png') }}" alt="f" />
   </div>
 
-      <div class="mt-16">
-        <p class="text-xl">
-          Nie masz konta?
-          <strong>
-            <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.register') }}">Zarejestruj się</a>
-          </strong>
-        </p>
+  <p class="text-center text-lg">
+    Nie masz konta?
+    <strong>
+      <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.register') }}">Zarejestruj się</a>
+    </strong>
+  </p>
 
-        <p class="text-xl mt-6">
-          Posiadasz już konto?
-          <strong>
-            <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.login') }}">Zaloguj się</a>
-          </strong>
-        </p>
-      </div>
-    </div>
-  </div>
-{% endblock %}
+  <p class="text-center text-lg mt-6">
+   Posiadasz już konto?
+    <strong>
+      <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.login') }}">Zaloguj się</a>
+    </strong>
+  </p>
