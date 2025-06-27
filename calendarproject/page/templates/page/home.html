@@ -3,10 +3,9 @@
 {% block title %}Kalendarz Konsultacji{% endblock %}
 
 {% block body %}
-
 <div class="flex justify-center pt-24 pb-12 px-2 sm:px-0">
   <img src="{{ static_url_for('static', filename='images/flask.png') }}" alt="f" />
-  </div>
+</div>
 
 {% if not current_user.is_authenticated %}
   <p class="text-center text-lg mt-12">
@@ -22,5 +21,19 @@
       <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.login') }}">Zaloguj się</a>
     </strong>
   </p>
+{% else %}
+  <div class="text-center mt-12">
+    <p class="text-xl mb-4">Witaj, {{ current_user.name }}!</p>
+
+    {% if current_user.role == 'admin' %}
+      <a class="text-blue-600 underline" href="{{ url_for('admin.dashboard') }}">Przejdź do panelu administratora</a>
+    {% elif current_user.role == 'instructor' %}
+      <a class="text-blue-600 underline" href="{{ url_for('instructor.dashboard') }}">Przejdź do panelu instruktora</a>
+    {% elif current_user.role == 'student' %}
+      <a class="text-blue-600 underline" href="{{ url_for('calendar.dashboard') }}">Przejdź do swojego kalendarza</a>
+    {% else %}
+      <p class="text-red-600">Nieznana rola użytkownika.</p>
+    {% endif %}
+  </div>
 {% endif %}
 {% endblock %}
