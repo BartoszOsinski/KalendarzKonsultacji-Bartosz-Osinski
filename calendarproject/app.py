@@ -74,6 +74,8 @@ def create_app(settings_override=None):
 
     app.config.from_object("config.settings")
 
+    app.config['DEBUG_TB_ENABLED'] = False
+
     if settings_override:
         app.config.update(settings_override)
 
