@@ -23,16 +23,13 @@
   </p>
 {% else %}
   <div class="text-center mt-12">
-    <p class="text-xl mb-4">Witaj, {{ current_user.name }}!</p>
 
-    {% if current_user.role == 'admin' %}
-      <a class="text-blue-600 underline" href="{{ url_for('admin.dashboard') }}">Przejdź do panelu administratora</a>
-    {% elif current_user.role == 'instructor' %}
+    {% if current_user.is_instructor %}
       <a class="text-blue-600 underline" href="{{ url_for('instructor.dashboard') }}">Przejdź do panelu instruktora</a>
-    {% elif current_user.role == 'student' %}
-      <a class="text-blue-600 underline" href="{{ url_for('calendar.dashboard') }}">Przejdź do swojego kalendarza</a>
+    {% if current_user.is_admin %}
+     <a class="text-blue-600 underline" href="{{ url_for('admin.dashboard') }}">Przejdź do panelu administratora</a>
     {% else %}
-      <p class="text-red-600">Nieznana rola użytkownika.</p>
+      <a class="text-blue-600 underline" href="{{ url_for('calendar.dashboard') }}">Przejdź do swojego kalendarza</a>
     {% endif %}
   </div>
 {% endif %}
