@@ -8,7 +8,8 @@
   <img src="{{ static_url_for('static', filename='images/flask.png') }}" alt="f" />
   </div>
 
-  <p class="text-center text-lg">
+{% if not current_user.is_authenticated %}
+  <p class="text-center text-lg mt-12">
     Nie masz konta?
     <strong>
       <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.register') }}">Zarejestruj się</a>
@@ -16,9 +17,10 @@
   </p>
 
   <p class="text-center text-lg mt-6">
-   Posiadasz już konto?
+    Posiadasz już konto?
     <strong>
       <a class="border-b border-gray-900 mb-1" href="{{ url_for('auth.login') }}">Zaloguj się</a>
     </strong>
   </p>
+{% endif %}
 {% endblock %}
