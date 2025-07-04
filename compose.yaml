@@ -86,7 +86,7 @@ services:
       start_period: "5s"
       retries: 3
     ports:
-      - "0.0.0.0:80:${PORT:-80}"
+      - "127.0.0.1:8080:${PORT:-80}"
     profiles: ["web"]
     environment:
       POSTGRES_USER: "${POSTGRES_USER}"
